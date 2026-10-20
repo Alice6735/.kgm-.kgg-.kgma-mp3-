@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>加密音频转换 MP3 · Unlock Music</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171a23;
+      --panel-2: #1e2230;
+      --border: #2a3044;
+      --text: #e8ecf5;
+      --muted: #93a0b8;
+      --accent: #4f8cff;
+      --accent-2: #7c5cff;
+      --ok: #3ecf8e;
+      --warn: #f5b84b;
+      --err: #ff6b7a;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; min-height: 100%; }
+    body {
+      font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(79, 140, 255, 0.18), transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, rgba(124, 92, 255, 0.14), transparent 45%),
+        var(--bg);
+      line-height: 1.55;
+    }
+
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 1.75rem;
+      letter-spacing: 0.02em;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .badge {
+      font-size: 0.78rem;
+      color: #cfe0ff;
+      background: rgba(79, 140, 255, 0.12);
+      border: 1px solid rgba(79, 140, 255, 0.28);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .card {
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .dropzone {
+      margin: 18px;
+      border: 2px dashed rgba(79, 140, 255, 0.45);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(79, 140, 255, 0.08), rgba(79, 140, 255, 0.02));
+      padding: 36px 18px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: rgba(79, 140, 255, 0.12);
+      transform: translateY(-1px);
+    }
+    .dropzone .icon { font-size: 2.2rem; margin-bottom: 8px; }
+    .dropzone h2 { margin: 0 0 6px; font-size: 1.15rem; }
+    .dropzone p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+    .dropzone .hint { margin-top: 10px; font-size: 0.82rem; color: #7f8da8; }
+    #fileInput { display: none; }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px 16px;
+    }
+    .toolbar .left, .toolbar .right { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .status-line { color: var(--muted); font-size: 0.9rem; }
+
+    button, .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.15s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover:not(:disabled), .btn:hover { border-color: var(--accent); color: #fff; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-color: transparent;
+      font-weight: 600;
+    }
+    button.primary:hover:not(:disabled) { filter: brightness(1.08); }
+    button.ghost-danger:hover:not(:disabled) { border-color: var(--err); color: var(--err); }
+
+    label.switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      user-select: none;
+      cursor: pointer;
+    }
+    label.switch input { accent-color: var(--accent); }
+
+    .results { padding: 0 18px 18px; }
+    .results h3 {
+      margin: 8px 0 12px;
+      font-size: 1rem;
+      color: #d7e3ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .results h3 .count {
+      background: rgba(79, 140, 255, 0.18);
+      border: 1px solid rgba(79, 140, 255, 0.3);
+      color: #cfe0ff;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      text-align: center;
+      padding: 28px 12px;
+      font-size: 0.92rem;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .item .meta { min-width: 0; }
+    .item .name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .item .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .item audio { width: min(280px, 100%); margin-top: 8px; }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      border: 1px solid transparent;
+    }
+    .tag.ok { color: #9dffd0; background: rgba(62, 207, 142, 0.12); border-color: rgba(62, 207, 142, 0.3); }
+    .tag.warn { color: #ffe2a0; background: rgba(245, 184, 75, 0.12); border-color: rgba(245, 184, 75, 0.3); }
+    .tag.err { color: #ffc0c8; background: rgba(255, 107, 122, 0.12); border-color: rgba(255, 107, 122, 0.3); }
+    .tag.info { color: #cfe0ff; background: rgba(79, 140, 255, 0.12); border-color: rgba(79, 140, 255, 0.28); }
+
+    .progress {
+      margin-top: 8px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress > i {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.2s ease;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 50;
+      max-width: min(360px, calc(100vw - 32px));
+    }
+    .toast {
+      background: #1b2030;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+      font-size: 0.88rem;
+      animation: slideIn 0.2s ease;
+    }
+    .toast.ok { border-left-color: var(--ok); }
+    .toast.err { border-left-color: var(--err); }
+    .toast.warn { border-left-color: var(--warn); }
+    @keyframes slideIn {
+      from { transform: translateY(8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    footer {
+      margin-top: 18px;
+      color: #7f8da8;
+      font-size: 0.82rem;
+    }
+    footer a { color: #9db7e8; }
+
+    .spin {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      display: inline-block;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .item { grid-template-columns: 1fr; }
+      .item .actions { justify-content: flex-start; }
+      header h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>加密音频 → MP3 转换器</h1>
+      <p>基于开源 Unlock Music（WASM）在浏览器本地解密，文件不会上传到任何服务器。</p>
+      <div class="badge-row">
+        <span class="badge">.kgm</span>
+        <span class="badge">.kgma</span>
+        <span class="badge">.kgg</span>
+        <span class="badge">.vpr</span>
+        <span class="badge">.qmcflac / .qmcogg / .mflac / .mgg</span>
+        <span class="badge">.bkcmp3 等 QMC</span>
+        <span class="badge">.ncm</span>
+        <span class="badge">.kwm</span>
+      </div>
+    </header>
+
+    <section class="card">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="选择或拖入加密音频文件">
+        <div class="icon">🎵</div>
+        <h2>点击选择文件，或拖拽到这里</h2>
+        <p>支持批量上传加密音频，解密完成后在下方展示可播放 / 可下载的 MP3</p>
+        <div class="hint">建议使用 VS Code「Live Server」打开本页面（不要直接双击 file://）</div>
+      </div>
+      <input id="fileInput" type="file" multiple accept=".kgm,.kgma,.kgg,.vpr,.qmc*,.mflac*,.mgg*,.bkc*,.tkm,.ncm,.kwm,.xm,.mp3,.flac,.ogg,.m4a" />
+
+      <div class="toolbar">
+        <div class="left">
+          <button id="btnPick" class="primary" type="button">选择文件</button>
+          <button id="btnZip" type="button" disabled>打包下载全部 MP3</button>
+          <button id="btnClear" class="ghost-danger" type="button" disabled>清空列表</button>
+        </div>
+        <div class="right">
+          <label class="switch" title="解密结果若不是 MP3（如 FLAC/OGG），则用 ffmpeg 转成 MP3">
+            <input id="optMp3" type="checkbox" checked />
+            非 MP3 自动转 MP3
+          </label>
+          <div id="statusLine" class="status-line">待命</div>
+        </div>
+      </div>
+
+      <div class="results">
+        <h3>转换结果 <span id="resultCount" class="count">0</span></h3>
+        <div id="emptyTip" class="empty">还没有文件。上传 .kgm / .kgma / .kgg 等加密音频后，这里会显示转换后的 MP3。</div>
+        <div id="list"></div>
+      </div>
+    </section>
+
+    <footer>
+      解密核心：Unlock Music 生态开源组件
+      <a href="https://git.um-react.app/um/web" target="_blank" rel="noopener">um/web</a> ·
+      <a href="https://www.npmjs.com/package/@xhacker/kgmwasm" target="_blank" rel="noopener">@xhacker/kgmwasm</a> ·
+      <a href="https://www.npmjs.com/package/@clamber_l/crypto" target="_blank" rel="noopener">@clamber_l/crypto</a>
+      <br />
+      仅用于个人已购内容在自有设备上的播放兼容。请保持音乐平台会员有效，勿二次分发解锁文件。
+    </footer>
+  </div>
+
+  <div id="toasts" class="toast-wrap"></div>
+
+  <!-- Unlock Music: KGM/KGMA/VPR 解密（官方 wasm，内嵌 data URI） -->
+  <script src="js/KgmWasmBundle.js"></script>
+  <!-- Unlock Music: QMC v2（mflac/mgg/qmcflac 等）解密 -->
+  <script src="js/QmcWasmBundle.js"></script>
+  <!-- JSZip：批量打包下载 -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+  <script>
+    "use strict";
+
+    /** @type {any} */
+    let kgmMod = null;
+    /** @type {any} */
+    let qmcMod = null;
+    /** @type {any} */
+    let umcMod = null; // @clamber_l/crypto (NCM/QMC1 等，CDN 可选)
+    /** @type {any} */
+    let ffmpegObj = null;
+    /** @type {any} */
+    let ffmpegLoading = null;
+
+    const DECRYPTION_BUF_SIZE = 2 * 1024 * 1024;
+
+    // 与 Unlock Music 官方 um/web src/decrypt/kgm.ts 一致的文件头魔数
+    const KGM_MAGIC = [0x7c, 0xd5, 0x32, 0xeb, 0x86, 0x02, 0x7f, 0x4b, 0xa8, 0xaf, 0xa6, 0x8e, 0x0f, 0xff, 0x99, 0x14];
+    const VPR_MAGIC = [0x05, 0x28, 0xbc, 0x96, 0xe9, 0xe4, 0x5a, 0x43, 0x91, 0xaa, 0xbd, 0xd0, 0x7a, 0xf5, 0x36, 0x31];
+    const KGM_TEXT_MAGIC = [0x6b, 0x67, 0x6d, 0x20]; // "kgm "（部分变体）
+    const NCM_MAGIC = [0x43, 0x54, 0x45, 0x4e, 0x46, 0x44, 0x41, 0x4d]; // "CTENFDAM"
+    const KWM_MAGIC = [0x79, 0x65, 0x65, 0x6c, 0x69, 0x6f, 0x6e, 0x2d, 0x6b, 0x75, 0x77, 0x6f, 0x2d, 0x74, 0x6d, 0x65];
+    const KWM_MAGIC2 = [0x79, 0x65, 0x65, 0x6c, 0x69, 0x6f, 0x6e, 0x2d, 0x6b, 0x75, 0x77, 0x6f, 0x00, 0x00, 0x00, 0x00];
+
+    const FLAC_HEADER = [0x66, 0x4c, 0x61, 0x43];
+    const MP3_ID3 = [0x49, 0x44, 0x33];
+    const OGG_HEADER = [0x4f, 0x67, 0x67, 0x53];
+    const M4A_HEADER = [0x66, 0x74, 0x79, 0x70];
+    const WAV_HEADER = [0x52, 0x49, 0x46, 0x46];
+    const WMA_HEADER = [0x30, 0x26, 0xb2, 0x75, 0x8e, 0x66, 0xcf, 0x11, 0xa6, 0xd9, 0x00, 0xaa, 0x00, 0x62, 0xce, 0x6c];
+    const AAC_HEADER = [0xff, 0xf1];
+    const DFF_HEADER = [0x46, 0x52, 0x4d, 0x38];
+
+    const QMC_V2_EXTS = new Set([
+      "qmcflac", "qmcogg", "qmc0", "qmc2", "qmc3", "qmc4", "qmc6", "qmc8",
+      "mflac", "mflac0", "mgg", "mgg0", "mggl", "mgg1", "mmp4",
+    ]);
+    const QMC_V1_EXTS = new Set([
+      "bkcmp3", "bkcm4a", "bkcflac", "bkcwav", "bkcape", "bkcogg", "bkcwma", "tkm",
+      "flac", "mp3", "ogg", "m4a", "wav", // hex 型扩展在识别后单独处理
+    ]);
+
+    // ---------- UI helpers ----------
+    const $ = (id) => document.getElementById(id);
+    const listEl = $("list");
+    const emptyTip = $("emptyTip");
+    const statusLine = $("statusLine");
+    const resultCount = $("resultCount");
+    const btnZip = $("btnZip");
+    const btnClear = $("btnClear");
+    const fileInput = $("fileInput");
+    const dropzone = $("dropzone");
+
+    /** @type {{id:string,file:File,status:string,progress:number,message:string,ext:string,outName:string,url:string,blob:Blob,size:number}[]} */
+    const items = [];
+    let seq = 0;
+
+    function toast(msg, type = "info", ms = 3200) {
+      const el = document.createElement("div");
+      el.className = "toast " + type;
+      el.textContent = msg;
+      $("toasts").appendChild(el);
+      setTimeout(() => el.remove(), ms);
+    }
+
+    function formatSize(n) {
+      if (n < 1024) return n + " B";
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+      return (n / 1024 / 1024).toFixed(2) + " MB";
+    }
+
+    function hasPrefix(data, prefix) {
+      if (data.length < prefix.length) return false;
+      for (let i = 0; i < prefix.length; i++) if (data[i] !== prefix[i]) return false;
+      return true;
+    }
+
+    function sniffAudioExt(data, fallback = "mp3") {
+      if (hasPrefix(data, MP3_ID3)) return "mp3";
+      if (hasPrefix(data, FLAC_HEADER)) return "flac";
+      if (hasPrefix(data, OGG_HEADER)) return "ogg";
+      if (data.length >= 8 && hasPrefix(data.subarray(4), M4A_HEADER)) return "m4a";
+      if (hasPrefix(data, WAV_HEADER)) return "wav";
+      if (hasPrefix(data, WMA_HEADER)) return "wma";
+      if (hasPrefix(data, AAC_HEADER)) return "aac";
+      if (hasPrefix(data, DFF_HEADER)) return "dff";
+      // MPEG frame sync without ID3
+      if (data.length >= 2 && data[0] === 0xff && (data[1] & 0xe0) === 0xe0) return "mp3";
+      return fallback;
+    }
+
+    function extOf(name) {
+      const i = name.lastIndexOf(".");
+      return i >= 0 ? name.slice(i + 1).toLowerCase() : "";
+    }
+
+    function baseName(name) {
+      const i = name.lastIndexOf(".");
+      return i > 0 ? name.slice(0, i) : name;
+    }
+
+    function mergeChunks(parts) {
+      let total = 0;
+      for (const p of parts) total += p.length;
+      const out = new Uint8Array(total);
+      let off = 0;
+      for (const p of parts) {
+        out.set(p, off);
+        off += p.length;
+      }
+      return out;
+    }
+
+    function updateSummary() {
+      resultCount.textContent = String(items.filter((x) => x.status === "done").length);
+      emptyTip.style.display = items.length ? "none" : "block";
+      btnClear.disabled = items.length === 0;
+      btnZip.disabled = !items.some((x) => x.status === "done" && x.blob);
+    }
+
+    function renderItems() {
+      listEl.innerHTML = "";
+      for (const item of items) {
+        const card = document.createElement("div");
+        card.className = "item";
+        card.dataset.id = item.id;
+
+        const statusTag =
+          item.status === "done"
+            ? '<span class="tag ok">✓ 完成</span>'
+            : item.status === "error"
+            ? '<span class="tag err">✕ 失败</span>'
+            : item.status === "working"
+            ? '<span class="tag info"><span class="spin"></span> 处理中</span>'
+            : '<span class="tag warn">等待</span>';
+
+        const outTag = item.ext
+          ? `<span class="tag info">输出 .${escapeHtml(item.ext)}</span>`
+          : "";
+
+        const audioHtml =
+          item.status === "done" && item.url
+            ? `<audio controls preload="none" src="${item.url}"></audio>`
+            : "";
+
+        const actions =
+          item.status === "done" && item.blob
+            ? `<a class="btn" download="${escapeAttr(item.outName)}" href="${item.url}">下载</a>`
+            : item.status === "error"
+            ? `<button type="button" data-act="retry" data-id="${item.id}">重试</button>`
+            : "";
+
+        card.innerHTML = `
+          <div class="meta">
+            <div class="name" title="${escapeAttr(item.file.name)}">${escapeHtml(item.file.name)}</div>
+            <div class="sub">
+              ${statusTag}
+              ${outTag}
+              <span>${formatSize(item.file.size)}</span>
+              ${item.message ? `<span>${escapeHtml(item.message)}</span>` : ""}
+            </div>
+            <div class="progress"><i style="width:${item.progress}%"></i></div>
+            ${audioHtml}
+          </div>
+          <div class="actions">
+            ${actions}
+            <button type="button" data-act="remove" data-id="${item.id}">移除</button>
+          </div>
+        `;
+        listEl.appendChild(card);
+      }
+      updateSummary();
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[c]);
+    }
+    function escapeAttr(s) {
+      return escapeHtml(s).replace(/`/g, "&#96;");
+    }
+
+    function setStatus(text) {
+      statusLine.textContent = text;
+    }
+
+    function setProgress(id, progress, message) {
+      const item = items.find((x) => x.id === id);
+      if (!item) return;
+      item.progress = Math.max(0, Math.min(100, progress));
+      if (message != null) item.message = message;
+      const card = listEl.querySelector(`[data-id="${id}"]`);
+      if (!card) {
+        renderItems();
+        return;
+      }
+      const bar = card.querySelector(".progress > i");
+      if (bar) bar.style.width = item.progress + "%";
+      const sub = card.querySelector(".sub");
+      if (sub && message != null) {
+        // keep tags, refresh trailing message span heuristically via full render when needed
+      }
+    }
+
+    // ---------- Module loaders ----------
+    async function ensureKgm() {
+      if (kgmMod) return kgmMod;
+      if (typeof KgmCryptoModule !== "function") {
+        throw new Error("KGM 解密模块未加载（缺少 js/KgmWasmBundle.js）");
+      }
+      setStatus("正在初始化 KGM 解密引擎…");
+      kgmMod = await KgmCryptoModule();
+      return kgmMod;
+    }
+
+    async function ensureQmc() {
+      if (qmcMod) return qmcMod;
+      if (typeof QmcCryptoModule !== "function") {
+        throw new Error("QMC 解密模块未加载（缺少 js/QmcWasmBundle.js）");
+      }
+      setStatus("正在初始化 QMC 解密引擎…");
+      qmcMod = await QmcCryptoModule();
+      return qmcMod;
+    }
+
+    async function ensureUmc() {
+      if (umcMod) return umcMod;
+      setStatus("正在加载通用解密库（NCM/QMC1 等）…");
+      const mod = await import("https://cdn.jsdelivr.net/npm/@clamber_l/crypto@0.1.12/dist/loader.mjs");
+      await mod.ready;
+      try { mod.initPanicHook(); } catch (_) {}
+      umcMod = mod;
+      return umcMod;
+    }
+
+    async function ensureFfmpeg() {
+      if (ffmpegObj) return ffmpegObj;
+      if (ffmpegLoading) return ffmpegLoading;
+      ffmpegLoading = (async () => {
+        setStatus("正在加载 ffmpeg 转码组件（首次约 30MB）…");
+        // load UMD bundles on demand
+        await loadScript("https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js");
+        await loadScript("https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js");
+        if (!window.FFmpegWASM || !window.FFmpegUtil) {
+          throw new Error("ffmpeg 组件加载失败，请检查网络");
+        }
+        const { FFmpeg } = window.FFmpegWASM;
+        const { fetchFile, toBlobURL } = window.FFmpegUtil;
+        const ffmpeg = new FFmpeg();
+        const base = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+        await ffmpeg.load({
+          coreURL: await toBlobURL(base + "/ffmpeg-core.js", "text/javascript"),
+          wasmURL: await toBlobURL(base + "/ffmpeg-core.wasm", "application/wasm"),
+        });
+        ffmpegObj = ffmpeg;
+        return ffmpeg;
+      })().catch((e) => {
+        ffmpegLoading = null;
+        throw e;
+      });
+      return ffmpegLoading;
+    }
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error("脚本加载失败: " + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    // ---------- Decrypt implementations ----------
+    async function decryptKgmLike(buffer, rawExt) {
+      const mod = await ensureKgm();
+      const data = new Uint8Array(buffer);
+      const ext = (rawExt || "kgm").toLowerCase();
+      const head = data.subarray(0, Math.min(16, data.length));
+
+      // 与官方一致：vpr / kgm(a) 各自魔数；兼容 "kgm " 文本头变体
+      if (ext === "vpr" || hasPrefix(head, VPR_MAGIC)) {
+        if (!hasPrefix(head, VPR_MAGIC) && !hasPrefix(head, KGM_MAGIC)) {
+          throw new Error("不是有效的 vpr 文件！");
+        }
+      } else {
+        const okKgm =
+          hasPrefix(head, KGM_MAGIC) ||
+          hasPrefix(head, KGM_TEXT_MAGIC) ||
+          hasPrefix(head, VPR_MAGIC);
+        if (!okKgm) throw new Error("不是有效的 kgm/kgma 文件！");
+      }
+
+      // ext passed into wasm: kgm / kgma / vpr；kgg 尝试 kgm
+      let wasmExt = ext === "kgg" ? "kgm" : ext;
+      if (!["kgm", "kgma", "vpr"].includes(wasmExt)) wasmExt = "kgm";
+
+      const p = mod._malloc(DECRYPTION_BUF_SIZE);
+      try {
+        const preSize = Math.min(DECRYPTION_BUF_SIZE, data.length);
+        mod.writeArrayToMemory(data.slice(0, preSize), p);
+        const headerSize = mod.preDec(p, preSize, wasmExt);
+        if (!Number.isFinite(headerSize) || headerSize < 0 || headerSize > data.length) {
+          throw new Error("KGM 文件头解析失败");
+        }
+        const body = data.slice(headerSize);
+        const parts = [];
+        let offset = 0;
+        let remain = body.length;
+        while (remain > 0) {
+          const blockSize = Math.min(remain, DECRYPTION_BUF_SIZE);
+          const block = body.slice(offset, offset + blockSize);
+          mod.writeArrayToMemory(block, p);
+          mod.decBlob(p, blockSize, offset);
+          parts.push(mod.HEAPU8.slice(p, p + blockSize));
+          offset += blockSize;
+          remain -= blockSize;
+        }
+        const out = mergeChunks(parts);
+        const detected = sniffAudioExt(out, "");
+        if (!detected) {
+          throw new Error("解密结果不是可识别的音频格式（可能文件损坏或不支持）");
+        }
+        return { data: out, ext: detected };
+      } finally {
+        mod._free(p);
+      }
+    }
+
+    async function decryptQmcV2(buffer, rawExt) {
+      const mod = await ensureQmc();
+      const data = new Uint8Array(buffer);
+      const ext = "." + (rawExt || "qmcflac").toLowerCase();
+
+      const p = mod._malloc(DECRYPTION_BUF_SIZE);
+      try {
+        const preSize = Math.min(DECRYPTION_BUF_SIZE, data.length);
+        // QMC preDec uses end-of-file buffer
+        mod.writeArrayToMemory(data.slice(-preSize), p);
+        const tailSize = mod.preDec(p, preSize, ext);
+        if (tailSize === -1) {
+          throw new Error(mod.getErr ? mod.getErr() : "QMC 解密初始化失败");
+        }
+        const parts = [];
+        let offset = 0;
+        let remain = data.length - tailSize;
+        while (remain > 0) {
+          const blockSize = Math.min(remain, DECRYPTION_BUF_SIZE);
+          const block = data.slice(offset, offset + blockSize);
+          mod.writeArrayToMemory(block, p);
+          const written = mod.decBlob(p, blockSize, offset);
+          parts.push(mod.HEAPU8.slice(p, p + written));
+          offset += blockSize;
+          remain -= blockSize;
+        }
+        const out = mergeChunks(parts);
+        return { data: out, ext: sniffAudioExt(out, "mp3") };
+      } finally {
+        mod._free(p);
+      }
+    }
+
+    async function decryptQmcV1(buffer) {
+      const umc = await ensureUmc();
+      const data = new Uint8Array(buffer);
+      umc.decryptQMC1(data, 0);
+      return { data, ext: sniffAudioExt(data, "mp3") };
+    }
+
+    async function decryptNcm(buffer) {
+      const umc = await ensureUmc();
+      const data = new Uint8Array(buffer);
+      const ncm = new umc.NCMFile();
+      // open with a generous header window; re-open if wasm asks for more
+      let need = ncm.open(data.subarray(0, Math.min(data.length, 8192)));
+      if (need > 0) {
+        need = ncm.open(data.subarray(0, Math.min(data.length, need)));
+      }
+      if (need !== 0) throw new Error("无效的 NCM 文件");
+      const audioOffset = ncm.audioOffset;
+      const audio = data.slice(audioOffset);
+      // offset relative to encrypted payload start
+      ncm.decrypt(audio, 0);
+      return { data: audio, ext: sniffAudioExt(audio, "mp3") };
+    }
+
+    function decryptKwm(buffer) {
+      const data = new Uint8Array(buffer);
+      if (!hasPrefix(data, KWM_MAGIC) && !hasPrefix(data, KWM_MAGIC2)) {
+        throw new Error("不是有效的 KWM 文件");
+      }
+      const predefined = "MoOtOiTvINGwd2E6n0E1i7L5t2IoOoNk";
+      const keyBytes = data.slice(0x18, 0x20);
+      const view = new DataView(keyBytes.buffer, keyBytes.byteOffset, keyBytes.byteLength);
+      let keyStr = view.getBigUint64(0, true).toString();
+      let out = keyStr;
+      if (out.length > 32) out = out.slice(0, 32);
+      else if (out.length < 32) out = out.padEnd(32, out);
+      const mask = new Uint8Array(32);
+      for (let i = 0; i < 32; i++) mask[i] = predefined.charCodeAt(i) ^ out.charCodeAt(i);
+      const audio = data.slice(0x400);
+      for (let i = 0; i < audio.length; i++) audio[i] ^= mask[i % 0x20];
+      return { data: audio, ext: sniffAudioExt(audio, "mp3") };
+    }
+
+    function alreadyAudio(buffer, rawExt) {
+      const data = new Uint8Array(buffer);
+      const ext = sniffAudioExt(data, "");
+      if (ext) return { data, ext };
+      if (rawExt && ["mp3", "flac", "ogg", "m4a", "wav", "wma", "aac"].includes(rawExt)) {
+        return { data, ext: rawExt };
+      }
+      return null;
+    }
+
+    async function convertToMp3(blob, srcExt) {
+      const ffmpeg = await ensureFfmpeg();
+      const { fetchFile } = window.FFmpegUtil;
+      const inName = "input." + (srcExt || "bin");
+      const outName = "output.mp3";
+      await ffmpeg.writeFile(inName, await fetchFile(blob));
+      // libmp3lame -q:a 2 ≈ 190kbps VBR
+      await ffmpeg.run("-y", "-i", inName, "-vn", "-codec:a", "libmp3lame", "-q:a", "2", outName);
+      const data = await ffmpeg.readFile(outName);
+      const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+      try { await ffmpeg.deleteFile(inName); } catch (_) {}
+      try { await ffmpeg.deleteFile(outName); } catch (_) {}
+      return new Blob([bytes], { type: "audio/mpeg" });
+    }
+
+    async function decryptAny(file) {
+      const rawExt = extOf(file.name);
+      const buffer = await file.arrayBuffer();
+      const head = new Uint8Array(buffer, 0, Math.min(16, buffer.byteLength));
+
+      // 1) 酷狗 KGM / KGMA / VPR / KGG
+      if (
+        ["kgm", "kgma", "kgg", "vpr"].includes(rawExt) ||
+        hasPrefix(head, KGM_MAGIC) ||
+        hasPrefix(head, VPR_MAGIC)
+      ) {
+        return await decryptKgmLike(buffer, rawExt || "kgm");
+      }
+
+      // 2) 网易云 NCM
+      if (rawExt === "ncm" || hasPrefix(head, NCM_MAGIC)) {
+        return await decryptNcm(buffer);
+      }
+
+      // 3) 酷我 KWM
+      if (rawExt === "kwm" || hasPrefix(head, KWM_MAGIC) || hasPrefix(head, KWM_MAGIC2)) {
+        return decryptKwm(buffer);
+      }
+
+      // 4) QQ 音乐 QMC v2
+      if (QMC_V2_EXTS.has(rawExt)) {
+        return await decryptQmcV2(buffer, rawExt);
+      }
+
+      // 5) QQ 音乐 QMC v1 / 蜂鸟静态密钥等
+      if (rawExt && (rawExt.startsWith("bkc") || rawExt === "tkm" || rawExt.startsWith("qmc"))) {
+        try {
+          return await decryptQmcV1(buffer);
+        } catch (e1) {
+          // 少数 qmcflac 实际是 v2，再试一次 v2
+          if (QMC_V2_EXTS.has(rawExt)) {
+            return await decryptQmcV2(buffer, rawExt);
+          }
+          throw e1;
+        }
+      }
+
+      // 6) 已经是明文音频
+      const plain = alreadyAudio(buffer, rawExt);
+      if (plain) return plain;
+
+      throw new Error("暂不支持的格式：" + (rawExt || "未知"));
+    }
+
+    // ---------- Pipeline ----------
+    async function processItem(item) {
+      item.status = "working";
+      item.message = "解密中…";
+      item.progress = 8;
+      renderItems();
+
+      try {
+        const { data, ext } = await decryptAny(item.file);
+        item.progress = 55;
+        item.message = "解密完成（." + ext + "）";
+        renderItems();
+
+        let outExt = ext;
+        let blob = new Blob([data], { type: mimeOf(ext) });
+
+        const wantMp3 = $("optMp3").checked;
+        if (wantMp3 && ext !== "mp3") {
+          item.message = "正在转换为 MP3…";
+          item.progress = 70;
+          renderItems();
+          try {
+            blob = await convertToMp3(blob, ext);
+            outExt = "mp3";
+            item.message = "已由 ." + ext + " 转为 MP3";
+          } catch (err) {
+            console.warn(err);
+            item.message = "MP3 转码失败，保留 ." + ext + " 原文件";
+            toast(item.file.name + "：" + item.message, "warn");
+          }
+        }
+
+        if (item.url) URL.revokeObjectURL(item.url);
+        item.blob = blob;
+        item.ext = outExt;
+        item.outName = baseName(item.file.name) + "." + outExt;
+        item.url = URL.createObjectURL(blob);
+        item.size = blob.size;
+        item.status = "done";
+        item.progress = 100;
+        item.message = item.message || "完成";
+      } catch (err) {
+        console.error(err);
+        item.status = "error";
+        item.progress = 100;
+        item.message = (err && err.message) || String(err) || "解密失败";
+        toast(item.file.name + "：" + item.message, "err", 4500);
+      }
+
+      renderItems();
+      updateSummary();
+    }
+
+    function mimeOf(ext) {
+      return (
+        {
+          mp3: "audio/mpeg",
+          flac: "audio/flac",
+          ogg: "audio/ogg",
+          m4a: "audio/mp4",
+          wav: "audio/x-wav",
+          wma: "audio/x-ms-wma",
+          aac: "audio/aac",
+        }[ext] || "application/octet-stream"
+      );
+    }
+
+    async function enqueueFiles(fileList) {
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+
+      const accepted = [];
+      for (const file of files) {
+        const ext = extOf(file.name);
+        // 已知扩展 / 或按魔数后续再判
+        const okExt =
+          ["kgm", "kgma", "kgg", "vpr", "ncm", "kwm"].includes(ext) ||
+          QMC_V2_EXTS.has(ext) ||
+          ext.startsWith("bkc") ||
+          ext === "tkm" ||
+          ext.startsWith("qmc") ||
+          ["mp3", "flac", "ogg", "m4a", "wav", "aac"].includes(ext) ||
+          ext === "";
+        if (!okExt) {
+          // 仍放入列表，由 pipeline 尝试魔数识别
+        }
+        const item = {
+          id: "f" + (++seq),
+          file,
+          status: "pending",
+          progress: 0,
+          message: "排队中",
+          ext: "",
+          outName: "",
+          url: "",
+          blob: null,
+          size: file.size,
+        };
+        items.push(item);
+        accepted.push(item);
+      }
+
+      renderItems();
+      setStatus("开始处理 " + accepted.length + " 个文件…");
+
+      // 串行处理，避免一次解密过多内存压力；KGM/QMC wasm 本身较快
+      for (const item of accepted) {
+        await processItem(item);
+      }
+
+      const done = accepted.filter((x) => x.status === "done").length;
+      const fail = accepted.filter((x) => x.status === "error").length;
+      setStatus("完成：成功 " + done + "，失败 " + fail);
+      toast("批量处理完成：成功 " + done + " / 失败 " + fail, fail ? "warn" : "ok");
+    }
+
+    // ---------- Events ----------
+    function openPicker() { fileInput.click(); }
+
+    dropzone.addEventListener("click", openPicker);
+    dropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openPicker();
+      }
+    });
+    $("btnPick").addEventListener("click", openPicker);
+
+    fileInput.addEventListener("change", () => {
+      enqueueFiles(fileInput.files);
+      fileInput.value = "";
+    });
+
+    ["dragenter", "dragover"].forEach((ev) => {
+      dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add("dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach((ev) => {
+      dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove("dragover");
+      });
+    });
+    dropzone.addEventListener("drop", (e) => {
+      const dt = e.dataTransfer;
+      if (dt && dt.files) enqueueFiles(dt.files);
+    });
+
+    // also allow dropping on window
+    window.addEventListener("dragover", (e) => e.preventDefault());
+    window.addEventListener("drop", (e) => e.preventDefault());
+
+    listEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-act]");
+      if (!btn) return;
+      const id = btn.getAttribute("data-id");
+      const act = btn.getAttribute("data-act");
+      const idx = items.findIndex((x) => x.id === id);
+      if (idx < 0) return;
+
+      if (act === "remove") {
+        const item = items[idx];
+        if (item.url) URL.revokeObjectURL(item.url);
+        items.splice(idx, 1);
+        renderItems();
+      } else if (act === "retry") {
+        const item = items[idx];
+        item.status = "pending";
+        item.progress = 0;
+        item.message = "重试中";
+        item.blob = null;
+        item.ext = "";
+        renderItems();
+        processItem(item);
+      }
+    });
+
+    btnClear.addEventListener("click", () => {
+      for (const it of items) if (it.url) URL.revokeObjectURL(it.url);
+      items.length = 0;
+      renderItems();
+      setStatus("已清空");
+    });
+
+    btnZip.addEventListener("click", async () => {
+      const done = items.filter((x) => x.status === "done" && x.blob);
+      if (!done.length) {
+        toast("没有可打包的转换结果", "warn");
+        return;
+      }
+      if (typeof JSZip === "undefined") {
+        toast("JSZip 未加载，无法打包。请检查网络后刷新。", "err");
+        return;
+      }
+      setStatus("正在打包 ZIP…");
+      btnZip.disabled = true;
+      try {
+        const zip = new JSZip();
+        const used = new Set();
+        for (const it of done) {
+          let name = it.outName || (baseName(it.file.name) + ".mp3");
+          let n = 1;
+          while (used.has(name)) {
+            name = baseName(it.file.name) + "_" + n + "." + (it.ext || "mp3");
+            n++;
+          }
+          used.add(name);
+          zip.file(name, it.blob);
+        }
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "converted_mp3_" + Date.now() + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        setStatus("ZIP 已开始下载");
+        toast("打包完成，共 " + done.length + " 个文件", "ok");
+      } catch (err) {
+        console.error(err);
+        setStatus("打包失败");
+        toast("打包失败：" + (err.message || err), "err");
+      } finally {
+        btnZip.disabled = false;
+        updateSummary();
+      }
+    });
+
+    // init
+    renderItems();
+    setStatus("待命 · 可开始上传");
+
+    // warm-up hint (non-blocking)
+    ensureKgm()
+      .then(() => setStatus("KGM 引擎已就绪"))
+      .catch((e) => {
+        console.warn(e);
+        setStatus("KGM 引擎加载失败：" + e.message);
+      });
+  </script>
+</body>
+</html>
